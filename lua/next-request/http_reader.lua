@@ -4,9 +4,9 @@ local M = {}
 --- Returns {name -> value} table.
 function M.parse_variables(text)
   local vars = {}
-  -- Use * (zero-or-more) so empty-value stubs like `@teamId = ` are captured too.
-  for name, value in text:gmatch("@([%w_]+)%s*=%s*([^\n\r]*)") do
-    vars[name] = value:gsub("^%s+", ""):gsub("%s+$", "")
+  -- Use [ \t]* instead of %s* so it doesn't consume newlines
+  for name, value in text:gmatch("@([%w_]+)[ \t]*=[ \t]*([^\n\r]*)") do
+    vars[name] = value:gsub("^[ \t]+", ""):gsub("[ \t]+$", "")
   end
   return vars
 end
