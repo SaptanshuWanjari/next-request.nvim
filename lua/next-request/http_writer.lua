@@ -125,16 +125,18 @@ local function do_write(path, request_info, base_var, prefix_var, file_ctx, rout
   local effective_body   = show_body_fields and request_info.body_fields or {}
 
   local gen_opts = {
-    method         = request_info.method,
-    route          = request_info.route,
-    base_url       = request_info.base_url,
-    base_var       = base_var,
-    prefix_var     = prefix_var,
-    body_fields    = effective_body,
-    query_params   = request_info.query_params,
-    route_params   = route_params,
-    uses_auth      = request_info.uses_auth,
-    custom_headers = request_info.custom_headers,
+    method          = request_info.method,
+    route           = request_info.route,
+    base_url        = request_info.base_url,
+    base_var        = base_var,
+    prefix_var      = prefix_var,
+    body_fields     = effective_body,
+    query_params    = request_info.query_params,
+    route_params    = route_params,
+    uses_auth       = request_info.uses_auth,
+    custom_headers  = request_info.custom_headers,
+    content_type    = request_info.content_type,
+    response_status = request_info.response_status,
   }
 
   local function do_generate(body_vals, param_vals, route_vals)
@@ -160,6 +162,7 @@ local function do_write(path, request_info, base_var, prefix_var, file_ctx, rout
     ui.fill_form({
       title        = title,
       body_fields  = effective_body,
+      body_hints   = request_info.body_hints or {},
       query_params = request_info.query_params or {},
       route_params = route_params or {},
       callback     = do_generate,

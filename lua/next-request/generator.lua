@@ -44,6 +44,17 @@ local function build_body(fields, values)
   return lines
 end
 
+--- Build multipart/form-data body.
+local function build_formdata_body(fields, values)
+  values = values or {}
+  local lines = {}
+  for _, field in ipairs(fields) do
+    local val = values[field] or ""
+    table.insert(lines, field .. "=" .. val)
+  end
+  return lines
+end
+
 --- Derive a human-readable title from the last non-param path segment.
 ---   /api/auth/login       -> "Login"
 ---   /api/users/{{id}}     -> "Users"
@@ -110,17 +121,20 @@ end
 --- Generate the full .http request block as a string.
 ---
 --- opts:
----   method         string     HTTP method
----   route          string     API route path
----   base_url       string     Raw base URL (fallback)
----   base_var       string?    Name of @baseUrl variable in http file
----   prefix_var     {name,path}?  Common-prefix variable
----   body_fields    string[]
----   query_params   string[]
----   uses_auth      bool
----   custom_headers string[]   Header names from request.headers.get(...)
----   body_values    {name->value}?  Literal values to embed in body (from UI)
----   param_values   {name->value}?  Literal values to embed in query (from UI)
+---   method          string      HTTP method
+---   route           string      API route path
+---   base_url        string      Raw base URL (fallback)
+---   base_var        string?     Name of @baseUrl variable in http file
+---   prefix_var      {name,path}?  Common-prefix variable
+---   body_fields     string[]
+---   query_params    string[]
+---   uses_auth       bool
+---   custom_headers  string[]    Header names from request.headers.get(...)
+---   body_values     {name->value}?  Literal values to embed in body (from UI)
+---   param_values    {name->value}?  Literal values to embed in query (from UI)
+---   route_values    {name->value}?  Literal values for route params (from UI)
+---   content_type    string?     "json" | "form-data" | "text" (default: "json")
+---   response_status number?     Expected HTTP response status code
 function M.generate(opts)
   if not opts or not opts.method or not opts.route then
     return nil, "Missing required request data (method, route)"
@@ -147,6 +161,23 @@ function M.generate(opts)
     table.insert(lines, "# @name " .. req_name)
   end
 
+  -- Response status comment (e.g. "# Expected: 201 Created")
+  if opts.response_status then
+    local STATUS_LABELS = {
+      [200] = "OK", [201] = "Created", [202] = "Accepted",
+      [204] = "No Content", [301] = "Moved Permanently",
+      [302] = "Found", [304] = "Not Modified",
+      [400] = "Bad Request", [401] = "Unauthorized", [403] = "Forbidden",
+      [404] = "Not Found", [409] = "Conflict",
+      [422] = "Unprocessable Entity", [429] = "Too Many Requests",
+      [500] = "Internal Server Error",
+    }
+    local label = STATUS_LABELS[opts.response_status] or ""
+    local status_str = tostring(opts.response_status)
+    if label ~= "" then status_str = status_str .. " " .. label end
+    table.insert(lines, "# Expected: " .. status_str)
+  end
+
   table.insert(lines, string.format("%s %s", opts.method, url))
 
   -- Auth header (from requireAuth / getSession detection)
@@ -163,10 +194,21 @@ function M.generate(opts)
   end
 
   -- Body (only for body methods with detected fields)
+  local ct = opts.content_type or "json"
   if BODY_METHODS[opts.method] and opts.body_fields and #opts.body_fields > 0 then
-    table.insert(lines, "Content-Type: application/json")
+    if ct == "form-data" then
+      table.insert(lines, "Content-Type: multipart/form-data")
+      table.insert(lines, "")
+      vim.list_extend(lines, build_formdata_body(opts.body_fields, opts.body_values))
+    else
+      table.insert(lines, "Content-Type: application/json")
+      table.insert(lines, "")
+      vim.list_extend(lines, build_body(opts.body_fields, opts.body_values))
+    end
+  elseif BODY_METHODS[opts.method] and ct == "text" then
+    table.insert(lines, "Content-Type: text/plain")
     table.insert(lines, "")
-    vim.list_extend(lines, build_body(opts.body_fields, opts.body_values))
+    table.insert(lines, "")
   end
 
   table.insert(lines, "")

@@ -18,11 +18,36 @@ function M.fill_form(opts)
 
   -- ── Build form content ────────────────────────────────────────────────────
   local lines = {}   -- raw line strings for the buffer
-  local meta  = {}   -- [{lineno, section, name}]  — tracks editable field lines
+  local meta  = {}   -- [{lineno, section, name, prefix}]  — tracks editable field lines
+  local uses_inline_virt = vim.fn.has("nvim-0.10") == 1
+
+  local body_hints = opts.body_hints or {}
+
+  -- Calculate max_name first for alignment
+  local max_name = 0
+  for _, f in ipairs(body_fields)  do 
+    local len = #f
+    if body_hints[f] then len = len + 3 + #body_hints[f] end
+    max_name = math.max(max_name, len) 
+  end
+  for _, p in ipairs(query_params) do max_name = math.max(max_name, #p) end
+  for _, r in ipairs(route_params) do max_name = math.max(max_name, #r) end
 
   local function push_field(section, name)
-    table.insert(lines, name .. " = ")
-    table.insert(meta, { lineno = #lines, section = section, name = name })
+    local display_name = name
+    if section == "body" and body_hints[name] then
+      display_name = name .. " (" .. body_hints[name] .. ")"
+    end
+
+    local pad = string.rep(" ", max_name - #display_name)
+    local prefix = pad .. display_name .. " = "
+    
+    if uses_inline_virt then
+      table.insert(lines, "") -- Buffer is empty, label will be virtual text
+    else
+      table.insert(lines, prefix)
+    end
+    table.insert(meta, { lineno = #lines, section = section, name = name, prefix = prefix })
   end
 
   local sections = 0
@@ -53,10 +78,7 @@ function M.fill_form(opts)
   end
 
   -- ── Window geometry ───────────────────────────────────────────────────────
-  local max_name = 0
-  for _, f in ipairs(body_fields)  do max_name = math.max(max_name, #f) end
-  for _, p in ipairs(query_params) do max_name = math.max(max_name, #p) end
-  for _, r in ipairs(route_params) do max_name = math.max(max_name, #r) end
+  -- max_name is already calculated above
 
   local win_w  = math.max(52, max_name + 6 + 24)
   local win_h  = #lines
@@ -70,6 +92,18 @@ function M.fill_form(opts)
   vim.bo[bufnr].bufhidden = "wipe"
   vim.bo[bufnr].swapfile  = false
   -- Leave filetype empty so copilot picks context from field names / content
+
+  -- Attach virtual text labels if using inline virtual text
+  if uses_inline_virt then
+    local ns = vim.api.nvim_create_namespace("next_request_ui")
+    for _, m in ipairs(meta) do
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, m.lineno - 1, 0, {
+        virt_text = { { m.prefix, "Comment" } },
+        virt_text_pos = "inline",
+        right_gravity = false,
+      })
+    end
+  end
 
   -- ── Floating window ───────────────────────────────────────────────────────
   local title = " " .. opts.title .. " "
@@ -105,8 +139,12 @@ function M.fill_form(opts)
     local body_vals, param_vals, route_vals = {}, {}, {}
     for _, m in ipairs(meta) do
       local line = cur_lines[m.lineno] or ""
-      -- Extract everything after the first `=`
-      local val  = line:match("^[^=]+=%s*(.-)%s*$") or ""
+      local val
+      if uses_inline_virt then
+        val = line:match("^%s*(.-)%s*$") or ""
+      else
+        val = line:match("^[^=]+=%s*(.-)%s*$") or ""
+      end
       if m.section == "body"  then body_vals[m.name]  = val end
       if m.section == "query" then param_vals[m.name] = val end
       if m.section == "route" then route_vals[m.name] = val end
