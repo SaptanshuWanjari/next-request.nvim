@@ -1,0 +1,38 @@
+*next-request.nvim*  Generate HTTP requests for Next.js handlers
+
+INTRODUCTION ~
+  next-request.nvim generates HTTP request snippets for Next.js route handlers
+  using Tree-sitter and path inference.
+  Requests are prefixed with `###` separators for .http files.
+
+COMMANDS ~
+  :NextRequest
+      Generate a request from the handler under the cursor.
+
+SETUP ~
+>
+  require("next-request").setup({
+    base_url = "http://localhost:3000",
+    route_style = "mustache", -- or "colon"
+    http_files = { "requests.http" },
+    keymap = {
+      enabled = false,
+      lhs = "<leader>nr",
+      mode = "n",
+      desc = "Next request",
+    },
+  })
+<
+
+CONFIGURATION ~
+  base_url      string  (default "http://localhost:3000")
+  route_style   string  ("mustache" | "colon")
+  http_files    array   list of .http files (relative to cwd or absolute)
+  command       string  command name (default "NextRequest")
+  keymap        table   mapping config
+
+NOTES ~
+  - Tree-sitter parser for TypeScript/JavaScript is required.
+  - Only MVP patterns are supported (simple req.json + destructure + searchParams.get).
+
+vim:tw=78:ts=8:noet:ft=help:norl:
