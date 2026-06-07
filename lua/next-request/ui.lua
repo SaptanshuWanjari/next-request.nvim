@@ -161,14 +161,14 @@ function M.fill_form(opts)
     done = true
     local bv, pv, rv = read_values()
     close()
-    vim.schedule(function() callback(bv, pv, rv) end)
+    vim.schedule(function() callback(bv, pv, rv, false) end)
   end
 
   local function skip()
     if done then return end
     done = true
     close()
-    vim.schedule(function() callback(nil, nil, nil) end)
+    vim.schedule(function() callback(nil, nil, nil, true) end)
   end
 
   -- ── Keymaps (buffer-local) ────────────────────────────────────────────────

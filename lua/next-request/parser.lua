@@ -166,11 +166,41 @@ local function extract_zod_keys_from_node(target_node, bufnr, lang)
                 table.insert(all_props, get_node_text(pn, bufnr))
               end
             end
-            -- Find the first prop that is a Zod type (skip "z" prefix and modifiers)
+
+            -- If type_val is just an identifier (e.g. role: RoleEnum), try to resolve it locally
+            if #all_props == 0 and type_val:type() == "identifier" then
+              local var_name = get_node_text(type_val, bufnr)
+              local root = type_val:tree():root()
+              local vq = parse_query(lang, string.format([[
+                (variable_declarator
+                  name: (identifier) @name (#eq? @name "%s")
+                  value: (_) @value
+                )
+              ]], var_name))
+              if vq then
+                for _, match, _ in vq:iter_matches(root, bufnr, 0, -1) do
+                  local val_node
+                  for id, n in pairs(match) do
+                    if vq.captures[id] == "value" then val_node = type(n) == "table" and n[1] or n end
+                  end
+                  if val_node then
+                    for _, pm, _ in pq:iter_matches(val_node, bufnr, 0, -1) do
+                      for pid, pn in pairs(pm) do
+                        pn = type(pn) == "table" and pn[1] or pn
+                        table.insert(all_props, get_node_text(pn, bufnr))
+                      end
+                    end
+                  end
+                end
+              end
+            end
+            -- Find the first prop that is a known Zod type (skip "z", modifiers, and unknown methods)
             for _, prop_name in ipairs(all_props) do
               if prop_name ~= "z" and not ZOD_MODIFIERS[prop_name] then
-                found_hint = ZOD_TYPES[prop_name]
-                break
+                if ZOD_TYPES[prop_name] then
+                  found_hint = ZOD_TYPES[prop_name]
+                  break
+                end
               end
             end
             if found_hint then hints[field] = found_hint end

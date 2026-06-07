@@ -140,17 +140,23 @@ local function do_write(path, request_info, base_var, prefix_var, file_ctx, rout
     response_status = request_info.response_status,
   }
 
-  local function do_generate(body_vals, param_vals, route_vals)
+  local function do_generate(body_vals, param_vals, route_vals, canceled)
+    if canceled then
+      notify("Request generation cancelled", vim.log.levels.WARN)
+      return
+    end
+
     gen_opts.body_values  = body_vals
     gen_opts.param_values = param_vals
     gen_opts.route_values = route_vals
     local req_str, gen_err = generator.generate(gen_opts)
     if not req_str then
-      notify(gen_err or "Failed to generate request", vim.log.levels.ERROR)
+      notify("Failed to generate request: " .. (gen_err or "unknown error"), vim.log.levels.ERROR)
       return
     end
+
     if append_request_string(path, req_str) then
-      notify("Appended to " .. vim.fn.fnamemodify(path, ":~:."))
+      notify("Appended " .. request_info.method .. " " .. request_info.route, vim.log.levels.INFO)
     end
   end
 
@@ -169,7 +175,7 @@ local function do_write(path, request_info, base_var, prefix_var, file_ctx, rout
       callback     = do_generate,
     })
   else
-    do_generate(nil, nil, nil)
+    do_generate(nil, nil, nil, false)
   end
 end
 
