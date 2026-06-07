@@ -110,10 +110,33 @@ local function extract_zod_keys_from_node(target_node, bufnr, lang)
   if type(target_node) == "table" and not target_node.type then target_node = target_node[1] end
   if not target_node then return fields, hints end
 
+  -- Known Zod type methods → canonical hint label
+  local ZOD_TYPES = {
+    string = "string", number = "number", boolean = "boolean",
+    enum = "enum",     nativeEnum = "enum",
+    array = "array",   tuple = "array",
+    object = "object", record = "object", map = "object",
+    date = "date",     bigint = "number",
+    union = "union",   discriminatedUnion = "union",
+    literal = "literal", set = "array",
+  }
+  -- Modifier methods that appear AFTER the type and should be skipped
+  local ZOD_MODIFIERS = {
+    optional=true, nullable=true, nullish=true,
+    default=true, catch=true, transform=true, pipe=true,
+    refine=true, superRefine=true, parse=true, safeParse=true,
+    min=true, max=true, length=true, email=true, url=true, uuid=true,
+    startsWith=true, endsWith=true, regex=true, trim=true,
+    toLowerCase=true, toUpperCase=true,
+    int=true, positive=true, negative=true, nonpositive=true,
+    nonnegative=true, finite=true, step=true,
+    describe=true, brand=true, readonly=true,
+  }
+
   local q = cached_query(lang, "zod_object_keys", [[
     (call_expression
       function: (member_expression property: (property_identifier) @method (#any-of? @method "object" "extend"))
-      arguments: (arguments (object (pair 
+      arguments: (arguments (object (pair
         key: [(property_identifier) @field (string (string_fragment) @field)]
         value: (_) @type_val
       ))))
@@ -135,16 +158,20 @@ local function extract_zod_keys_from_node(target_node, bufnr, lang)
           local pq = cached_query(lang, "zod_type_prop", "(property_identifier) @prop")
           if pq then
             local found_hint
+            -- Collect all property_identifiers in the type_val expression
+            local all_props = {}
             for _, pm, _ in pq:iter_matches(type_val, bufnr, 0, -1) do
               for pid, pn in pairs(pm) do
                 pn = type(pn) == "table" and pn[1] or pn
-                local prop_name = get_node_text(pn, bufnr)
-                if prop_name == "string" or prop_name == "number" or prop_name == "boolean" or prop_name == "enum" or prop_name == "array" or prop_name == "object" or prop_name == "date" then
-                  found_hint = prop_name
-                  break
-                end
+                table.insert(all_props, get_node_text(pn, bufnr))
               end
-              if found_hint then break end
+            end
+            -- Find the first prop that is a Zod type (skip "z" prefix and modifiers)
+            for _, prop_name in ipairs(all_props) do
+              if prop_name ~= "z" and not ZOD_MODIFIERS[prop_name] then
+                found_hint = ZOD_TYPES[prop_name]
+                break
+              end
             end
             if found_hint then hints[field] = found_hint end
           end
@@ -154,6 +181,7 @@ local function extract_zod_keys_from_node(target_node, bufnr, lang)
   end
   return fields, hints
 end
+
 
 --- Resolve a Zod schema node to its set of top-level keys.
 --- Returns fields, hints
@@ -744,6 +772,8 @@ function M.parse_current_function(bufnr)
       response_status = nil,
     }
   end
+
+  local content_type = detect_content_type(body_node, bufnr, lang)
 
   local body_fields = {}
   local body_hints = {}

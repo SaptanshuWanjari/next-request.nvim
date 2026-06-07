@@ -32,13 +32,30 @@ end
 
 --- Build JSON body. values fills in literal values for this run;
 --- falls back to empty strings so the template is always valid.
-local function build_body(fields, values)
+local function build_body(fields, values, hints)
   values = values or {}
+  hints = hints or {}
   local lines = { "{" }
   for i, field in ipairs(fields) do
     local comma = (i < #fields) and "," or ""
     local val   = values[field] or ""
-    table.insert(lines, string.format("  \"%s\": \"%s\"%s", field, val, comma))
+    
+    local is_number = hints[field] == "number"
+    local is_boolean = hints[field] == "boolean"
+    
+    if val == "" then
+      -- If user left it blank, output as string so it's a valid JSON placeholder
+      table.insert(lines, string.format("  \"%s\": \"%s\"%s", field, val, comma))
+    elseif is_number then
+      -- Don't quote numbers
+      table.insert(lines, string.format("  \"%s\": %s%s", field, val, comma))
+    elseif is_boolean then
+      -- Don't quote booleans
+      table.insert(lines, string.format("  \"%s\": %s%s", field, val, comma))
+    else
+      -- Quote strings, enums, etc.
+      table.insert(lines, string.format("  \"%s\": \"%s\"%s", field, val, comma))
+    end
   end
   table.insert(lines, "}")
   return lines
@@ -203,7 +220,7 @@ function M.generate(opts)
     else
       table.insert(lines, "Content-Type: application/json")
       table.insert(lines, "")
-      vim.list_extend(lines, build_body(opts.body_fields, opts.body_values))
+      vim.list_extend(lines, build_body(opts.body_fields, opts.body_values, opts.body_hints))
     end
   elseif BODY_METHODS[opts.method] and ct == "text" then
     table.insert(lines, "Content-Type: text/plain")

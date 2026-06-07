@@ -131,6 +131,7 @@ local function do_write(path, request_info, base_var, prefix_var, file_ctx, rout
     base_var        = base_var,
     prefix_var      = prefix_var,
     body_fields     = effective_body,
+    body_hints      = request_info.body_hints,
     query_params    = request_info.query_params,
     route_params    = route_params,
     uses_auth       = request_info.uses_auth,
