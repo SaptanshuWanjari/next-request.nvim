@@ -25,8 +25,12 @@ local function build_query(params, param_values)
   param_values = param_values or {}
   local parts = {}
   for _, key in ipairs(params) do
-    table.insert(parts, key .. "=" .. (param_values[key] or ""))
+    local val = param_values[key] or ""
+    if val ~= "" then
+      table.insert(parts, key .. "=" .. val)
+    end
   end
+  if #parts == 0 then return "" end
   return "?" .. table.concat(parts, "&")
 end
 
@@ -163,8 +167,6 @@ function M.generate(opts)
   local url   = build_url(opts)
   local title = route_title(opts.route)
 
-  -- # @name decorator for VSCode REST Client chaining (B4)
-  local req_name = title and (opts.method:lower() .. "_" .. title:lower()) or nil
   local separator = title and ("### " .. title) or "###"
 
   local lines = {}
@@ -172,28 +174,6 @@ function M.generate(opts)
   -- ### separator comes FIRST — ensures the HTTP client treats everything
   -- that follows as a new request, not as the body of the previous one.
   table.insert(lines, separator)
-
-  -- B4: # @name decorator for VSCode REST Client chaining (must be after ###)
-  if req_name then
-    table.insert(lines, "# @name " .. req_name)
-  end
-
-  -- Response status comment (e.g. "# Expected: 201 Created")
-  if opts.response_status then
-    local STATUS_LABELS = {
-      [200] = "OK", [201] = "Created", [202] = "Accepted",
-      [204] = "No Content", [301] = "Moved Permanently",
-      [302] = "Found", [304] = "Not Modified",
-      [400] = "Bad Request", [401] = "Unauthorized", [403] = "Forbidden",
-      [404] = "Not Found", [409] = "Conflict",
-      [422] = "Unprocessable Entity", [429] = "Too Many Requests",
-      [500] = "Internal Server Error",
-    }
-    local label = STATUS_LABELS[opts.response_status] or ""
-    local status_str = tostring(opts.response_status)
-    if label ~= "" then status_str = status_str .. " " .. label end
-    table.insert(lines, "# Expected: " .. status_str)
-  end
 
   table.insert(lines, string.format("%s %s", opts.method, url))
 
