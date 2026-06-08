@@ -44,8 +44,8 @@ local function build_body(fields, values, hints)
     local comma = (i < #fields) and "," or ""
     local val   = values[field] or ""
     
-    local is_number = hints[field] == "number"
-    local is_boolean = hints[field] == "boolean"
+    local is_number = hints[field] == "number" or tonumber(val) ~= nil
+    local is_boolean = hints[field] == "boolean" or val == "true" or val == "false"
     
     if val == "" then
       -- If user left it blank, output as string so it's a valid JSON placeholder
