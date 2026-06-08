@@ -126,7 +126,11 @@ local function build_url(opts)
     local ppath = opts.prefix_var.path
     if route:sub(1, #ppath) == ppath then
       local suffix = route:sub(#ppath + 1)  -- e.g. "/members" or ""
-      return "{{" .. opts.prefix_var.name .. "}}" .. suffix .. query
+      if opts.base_var then
+        return "{{" .. opts.base_var .. "}}{{" .. opts.prefix_var.name .. "}}" .. suffix .. query
+      else
+        return join_url(opts.base_url, "{{" .. opts.prefix_var.name .. "}}" .. suffix) .. query
+      end
     end
   end
 

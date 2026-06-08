@@ -210,7 +210,7 @@ local function write_to_file(path, request_info)
   if common_prefix then
     local pname = http_reader.prefix_var_name(common_prefix)
     if not file_ctx.variables[pname] and not queued[pname] then
-      local pvalue = "{{" .. base_var .. "}}" .. common_prefix
+      local pvalue = common_prefix
       table.insert(new_vars, { name = pname, value = pvalue })
       queued[pname] = true
     end
