@@ -317,24 +317,23 @@ function M.run_request(request_info, cfg)
       vim.api.nvim_buf_set_lines(bufnr, #lines, -1, false, new_lines)
     end
     
-    local win_found = false
+    local scratch_win = nil
     for _, win in ipairs(vim.api.nvim_list_wins()) do
       if vim.api.nvim_win_get_buf(win) == bufnr then
         vim.api.nvim_set_current_win(win)
-        win_found = true
+        scratch_win = win
         break
       end
     end
 
-    if not win_found then
-      local total_width = math.floor(vim.o.columns * 0.8)
-      local height = math.floor(vim.o.lines * 0.8)
-      local scratch_width = math.floor(total_width * 0.3)
-      
-      -- Place the scratch buffer on the left side of the 80% area
-      local col_left = math.floor((vim.o.columns - total_width) / 2)
-      local row = math.floor((vim.o.lines - height) / 2)
-      
+    local total_width = math.floor(vim.o.columns * 0.8)
+    local height = math.floor(vim.o.lines * 0.8)
+    local scratch_width = math.floor(total_width * 0.3)
+    local kulala_width = total_width - scratch_width - 2
+    local col_left = math.floor((vim.o.columns - total_width) / 2)
+    local row = math.floor((vim.o.lines - height) / 2)
+
+    if not scratch_win then
       local win_opts = {
         relative = "editor",
         width = scratch_width,
@@ -344,8 +343,8 @@ function M.run_request(request_info, cfg)
         style = "minimal",
         border = "rounded",
       }
-      local win = vim.api.nvim_open_win(bufnr, true, win_opts)
-      vim.api.nvim_set_option_value("winhl", "NormalFloat:Normal", { win = win })
+      scratch_win = vim.api.nvim_open_win(bufnr, true, win_opts)
+      vim.api.nvim_set_option_value("winhl", "NormalFloat:Normal", { win = scratch_win })
       vim.keymap.set('n', 'q', '<cmd>close<CR>', { buffer = bufnr, silent = true })
     end
     
@@ -361,13 +360,6 @@ function M.run_request(request_info, cfg)
           local config = kulala_cfg.get()
           if config then
             config.display_mode = "float"
-            
-            local total_width = math.floor(vim.o.columns * 0.8)
-            local height = math.floor(vim.o.lines * 0.8)
-            local scratch_width = math.floor(total_width * 0.3)
-            local kulala_width = total_width - scratch_width - 2
-            local col_left = math.floor((vim.o.columns - total_width) / 2)
-            local row = math.floor((vim.o.lines - height) / 2)
             
             config.ui = config.ui or {}
             config.ui.win_opts = vim.tbl_deep_extend("force", config.ui.win_opts or {}, {
@@ -385,6 +377,48 @@ function M.run_request(request_info, cfg)
             })
           end
         end
+
+        -- Link windows for unified close
+        local group_name = "NextRequestKulalaLink_" .. tostring(scratch_win)
+        local group = vim.api.nvim_create_augroup(group_name, { clear = true })
+        
+        vim.api.nvim_create_autocmd("WinNew", {
+          group = group,
+          callback = function()
+            vim.schedule(function()
+              local new_win = vim.api.nvim_get_current_win()
+              local ok_win, win_cfg = pcall(vim.api.nvim_win_get_config, new_win)
+              -- Verify it's a float and matches Kulala's expected width
+              if ok_win and win_cfg.zindex and new_win ~= scratch_win and win_cfg.width == kulala_width then
+                local kulala_win = new_win
+                
+                -- Close scratch if kulala closes
+                vim.api.nvim_create_autocmd("WinClosed", {
+                  pattern = tostring(kulala_win),
+                  once = true,
+                  callback = function()
+                    if vim.api.nvim_win_is_valid(scratch_win) then
+                      pcall(vim.api.nvim_win_close, scratch_win, true)
+                    end
+                  end
+                })
+                
+                -- Close kulala if scratch closes
+                vim.api.nvim_create_autocmd("WinClosed", {
+                  pattern = tostring(scratch_win),
+                  once = true,
+                  callback = function()
+                    if vim.api.nvim_win_is_valid(kulala_win) then
+                      pcall(vim.api.nvim_win_close, kulala_win, true)
+                    end
+                  end
+                })
+                
+                pcall(vim.api.nvim_del_augroup_by_id, group)
+              end
+            end)
+          end
+        })
 
         vim.schedule(function()
           kulala.run()
