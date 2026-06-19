@@ -28,10 +28,16 @@ directory. Requests are prefixed with `###` for .http file separation.
     env_files = { ".env", ".env.local" },
     execution_client = "kulala",
     keymap = {
-      enabled = false,
+      enabled = true,
       lhs = "<leader>rq",
       mode = "n",
       desc = "Next request",
+    },
+    run_keymap = {
+      enabled = true,
+      lhs = "<leader>rr",
+      mode = "n",
+      desc = "Next request run",
     },
   },
   config = function(_, opts)
@@ -62,6 +68,12 @@ require("next-request").setup({
     lhs = "<leader>rq",
     mode = "n",
     desc = "Next request",
+  },
+  run_keymap = {
+    enabled = false,
+    lhs = "<leader>rr",
+    mode = "n",
+    desc = "Next request run",
   },
 })
 ```

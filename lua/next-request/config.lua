@@ -13,13 +13,19 @@ local DEFAULTS = {
     mode = "n",
     desc = "Next request",
   },
+  run_keymap = {
+    enabled = false,
+    lhs = nil,
+    mode = "n",
+    desc = "Next request run",
+  },
 }
 
 M._state = {
   config = nil,
 }
 
-local function normalize_keymap(value)
+local function normalize_keymap(value, default_tbl)
   if value == false then
     return { enabled = false }
   end
@@ -27,18 +33,18 @@ local function normalize_keymap(value)
     return {
       enabled = true,
       lhs = value,
-      mode = DEFAULTS.keymap.mode,
-      desc = DEFAULTS.keymap.desc,
+      mode = default_tbl.mode,
+      desc = default_tbl.desc,
     }
   end
   if type(value) == "table" then
-    local res = vim.tbl_deep_extend("force", DEFAULTS.keymap, value)
+    local res = vim.tbl_deep_extend("force", default_tbl, value)
     if value.lhs ~= nil and value.enabled == nil then
       res.enabled = true
     end
     return res
   end
-  return vim.deepcopy(DEFAULTS.keymap)
+  return vim.deepcopy(default_tbl)
 end
 
 local function normalize(opts)
@@ -58,7 +64,8 @@ local function normalize(opts)
     cfg.route_style = DEFAULTS.route_style
   end
 
-  cfg.keymap = normalize_keymap(cfg.keymap)
+  cfg.keymap = normalize_keymap(cfg.keymap, DEFAULTS.keymap)
+  cfg.run_keymap = normalize_keymap(cfg.run_keymap, DEFAULTS.run_keymap)
 
   return cfg
 end

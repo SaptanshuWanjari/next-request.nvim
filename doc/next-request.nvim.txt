@@ -21,6 +21,12 @@ SETUP ~
       mode = "n",
       desc = "Next request",
     },
+    run_keymap = {
+      enabled = false,
+      lhs = "<leader>rr",
+      mode = "n",
+      desc = "Next request run",
+    },
   })
 <
 
@@ -29,7 +35,8 @@ CONFIGURATION ~
   route_style   string  ("mustache" | "colon")
   http_files    array   list of .http files (relative to cwd or absolute)
   command       string  command name (default "NextRequest")
-  keymap        table   mapping config
+  keymap        table   mapping config for :NextRequest
+  run_keymap    table   mapping config for :NextRequestRun
 
 NOTES ~
   - Tree-sitter parser for TypeScript/JavaScript is required.

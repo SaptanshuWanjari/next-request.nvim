@@ -159,6 +159,11 @@ function M.setup(opts)
     local call = string.format("<cmd>%s<CR>", cfg.command or "NextRequest")
     set_keymap(cfg.keymap.mode or "n", cfg.keymap.lhs, call, cfg.keymap.desc or "Next request")
   end
+
+  if cfg.run_keymap and cfg.run_keymap.enabled and cfg.run_keymap.lhs then
+    local call = string.format("<cmd>%sRun<CR>", cfg.command or "NextRequest")
+    set_keymap(cfg.run_keymap.mode or "n", cfg.run_keymap.lhs, call, cfg.run_keymap.desc or "Next request run")
+  end
 end
 
 return M
