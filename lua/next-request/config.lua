@@ -32,7 +32,11 @@ local function normalize_keymap(value)
     }
   end
   if type(value) == "table" then
-    return vim.tbl_deep_extend("force", DEFAULTS.keymap, value)
+    local res = vim.tbl_deep_extend("force", DEFAULTS.keymap, value)
+    if value.lhs ~= nil and value.enabled == nil then
+      res.enabled = true
+    end
+    return res
   end
   return vim.deepcopy(DEFAULTS.keymap)
 end
