@@ -4,6 +4,8 @@ local DEFAULTS = {
   base_url = "http://localhost:3000",
   route_style = "mustache",
   http_files = {},
+  env_files = { ".env", ".env.local" },
+  execution_client = "kulala",
   command = "NextRequest",
   keymap = {
     enabled = false,
@@ -42,6 +44,11 @@ local function normalize(opts)
     cfg.http_files = { cfg.http_files }
   end
   if type(cfg.http_files) ~= "table" then cfg.http_files = {} end
+
+  if type(cfg.env_files) == "string" then
+    cfg.env_files = { cfg.env_files }
+  end
+  if type(cfg.env_files) ~= "table" then cfg.env_files = { ".env", ".env.local" } end
 
   if cfg.route_style ~= "mustache" and cfg.route_style ~= "colon" then
     cfg.route_style = DEFAULTS.route_style

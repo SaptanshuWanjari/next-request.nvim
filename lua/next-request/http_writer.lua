@@ -269,4 +269,79 @@ function M.append_request(request_info, cfg)
   end)
 end
 
+function M.run_request(request_info, cfg)
+  local show_body_fields = BODY_METHODS[request_info.method]
+                           and (request_info.body_fields and #request_info.body_fields > 0)
+  local effective_body   = show_body_fields and request_info.body_fields or {}
+  local route_params = http_reader.extract_route_params(request_info.route)
+
+  local gen_opts = {
+    method          = request_info.method,
+    route           = request_info.route,
+    base_url        = request_info.base_url,
+    body_fields     = effective_body,
+    body_hints      = request_info.body_hints,
+    query_params    = request_info.query_params,
+    route_params    = route_params,
+    uses_auth       = request_info.uses_auth,
+    custom_headers  = request_info.custom_headers,
+    content_type    = request_info.content_type,
+    response_status = request_info.response_status,
+  }
+
+  local function do_generate(body_vals, param_vals, route_vals, canceled)
+    if canceled then
+      notify("Request execution cancelled", vim.log.levels.WARN)
+      return
+    end
+
+    gen_opts.body_values  = body_vals
+    gen_opts.param_values = param_vals
+    gen_opts.route_values = route_vals
+    local req_str, gen_err = generator.generate(gen_opts)
+    if not req_str then
+      notify("Failed to generate request: " .. (gen_err or "unknown error"), vim.log.levels.ERROR)
+      return
+    end
+
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_option_value("filetype", "http", { buf = bufnr })
+    
+    local final_str = "@baseUrl = " .. request_info.base_url .. "\n\n" .. req_str
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(final_str, "\n", { plain = true }))
+    
+    vim.cmd("vsplit")
+    vim.api.nvim_win_set_buf(0, bufnr)
+    
+    if cfg.execution_client == "kulala" then
+      local ok, kulala = pcall(require, "kulala")
+      if ok then
+        vim.schedule(function()
+          kulala.run()
+        end)
+      else
+        notify("kulala.nvim is not installed", vim.log.levels.ERROR)
+      end
+    end
+  end
+
+  local needs_body   = show_body_fields
+  local needs_params = #(request_info.query_params or {}) > 0
+  local needs_route  = #(route_params or {}) > 0
+
+  if needs_body or needs_params or needs_route then
+    local title = "Run: " .. request_info.method .. " " .. request_info.route
+    ui.fill_form({
+      title        = title,
+      body_fields  = effective_body,
+      body_hints   = request_info.body_hints or {},
+      query_params = request_info.query_params or {},
+      route_params = route_params or {},
+      callback     = do_generate,
+    })
+  else
+    do_generate(nil, nil, nil, false)
+  end
+end
+
 return M

@@ -12,6 +12,10 @@ local function strip_route_file(path)
 end
 
 local function apply_route_style(route, style)
+  -- Remove Next.js catch-all syntax e.g. [[...slug]] or [...slug]
+  route = route:gsub("%[%[%.%.%.(.-)%]%]", "[%1]")
+  route = route:gsub("%[%.%.%.(.-)%]", "[%1]")
+
   if style == "colon" then
     return route:gsub("%[(.-)%]", ":%1")
   end

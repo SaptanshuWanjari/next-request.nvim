@@ -46,18 +46,27 @@ local function build_body(fields, values, hints)
     
     local is_number = hints[field] == "number" or tonumber(val) ~= nil
     local is_boolean = hints[field] == "boolean" or val == "true" or val == "false"
+    local is_array = hints[field] == "array"
+    local is_object = hints[field] == "object"
     
     if val == "" then
-      -- If user left it blank, output as string so it's a valid JSON placeholder
+      if is_number then val = "1"
+      elseif is_boolean then val = "true"
+      elseif is_array then val = "[]"
+      elseif is_object then val = "{}"
+      elseif hints[field] == "string" then val = "test"
+      end
+    end
+
+    if val == "" and not is_number and not is_boolean and not is_array and not is_object then
       table.insert(lines, string.format("  \"%s\": \"%s\"%s", field, val, comma))
     elseif is_number then
-      -- Don't quote numbers
       table.insert(lines, string.format("  \"%s\": %s%s", field, val, comma))
     elseif is_boolean then
-      -- Don't quote booleans
+      table.insert(lines, string.format("  \"%s\": %s%s", field, val, comma))
+    elseif is_array or is_object then
       table.insert(lines, string.format("  \"%s\": %s%s", field, val, comma))
     else
-      -- Quote strings, enums, etc.
       table.insert(lines, string.format("  \"%s\": \"%s\"%s", field, val, comma))
     end
   end
@@ -174,6 +183,9 @@ function M.generate(opts)
   local separator = title and ("### " .. title) or "###"
 
   local lines = {}
+
+  -- Ensure blank line before request
+  table.insert(lines, "")
 
   -- ### separator comes FIRST — ensures the HTTP client treats everything
   -- that follows as a new request, not as the body of the previous one.
