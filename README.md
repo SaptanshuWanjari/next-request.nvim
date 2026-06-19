@@ -29,7 +29,7 @@ directory. Requests are prefixed with `###` for .http file separation.
     execution_client = "kulala",
     keymap = {
       enabled = false,
-      lhs = "<leader>nr",
+      lhs = "<leader>Nr",
       mode = "n",
       desc = "Next request",
     },
@@ -59,7 +59,7 @@ require("next-request").setup({
   command = "NextRequest",
   keymap = {
     enabled = false,
-    lhs = "<leader>nr",
+    lhs = "<leader>Nr",
     mode = "n",
     desc = "Next request",
   },

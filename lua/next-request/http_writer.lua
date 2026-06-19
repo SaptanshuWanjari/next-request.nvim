@@ -344,7 +344,8 @@ function M.run_request(request_info, cfg)
         style = "minimal",
         border = "rounded",
       }
-      vim.api.nvim_open_win(bufnr, true, win_opts)
+      local win = vim.api.nvim_open_win(bufnr, true, win_opts)
+      vim.api.nvim_set_option_value("winhl", "NormalFloat:Normal", { win = win })
       vim.keymap.set('n', 'q', '<cmd>close<CR>', { buffer = bufnr, silent = true })
     end
     
@@ -377,6 +378,10 @@ function M.run_request(request_info, cfg)
               col = col_left + scratch_width + 2,
               style = "minimal",
               border = "rounded",
+            })
+            config.ui.win_opts.wo = vim.tbl_deep_extend("force", config.ui.win_opts.wo or {}, {
+              winhl = "NormalFloat:Normal",
+              winblend = 0,
             })
           end
         end
