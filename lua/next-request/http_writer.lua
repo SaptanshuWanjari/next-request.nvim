@@ -304,18 +304,83 @@ function M.run_request(request_info, cfg)
       return
     end
 
-    local bufnr = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_set_option_value("filetype", "http", { buf = bufnr })
+    local bufnr = M._scratch_bufnr
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+      bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_set_option_value("filetype", "http", { buf = bufnr })
+      M._scratch_bufnr = bufnr
+      local final_str = "@baseUrl = " .. request_info.base_url .. "\n\n" .. req_str
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(final_str, "\n", { plain = true }))
+    else
+      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+      local new_lines = vim.split(req_str, "\n", { plain = true })
+      vim.api.nvim_buf_set_lines(bufnr, #lines, -1, false, new_lines)
+    end
     
-    local final_str = "@baseUrl = " .. request_info.base_url .. "\n\n" .. req_str
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(final_str, "\n", { plain = true }))
+    local win_found = false
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_get_buf(win) == bufnr then
+        vim.api.nvim_set_current_win(win)
+        win_found = true
+        break
+      end
+    end
+
+    if not win_found then
+      local total_width = math.floor(vim.o.columns * 0.8)
+      local height = math.floor(vim.o.lines * 0.8)
+      local scratch_width = math.floor(total_width * 0.3)
+      
+      -- Place the scratch buffer on the left side of the 80% area
+      local col_left = math.floor((vim.o.columns - total_width) / 2)
+      local row = math.floor((vim.o.lines - height) / 2)
+      
+      local win_opts = {
+        relative = "editor",
+        width = scratch_width,
+        height = height,
+        row = row,
+        col = col_left,
+        style = "minimal",
+        border = "rounded",
+      }
+      vim.api.nvim_open_win(bufnr, true, win_opts)
+      vim.keymap.set('n', 'q', '<cmd>close<CR>', { buffer = bufnr, silent = true })
+    end
     
-    vim.cmd("vsplit")
-    vim.api.nvim_win_set_buf(0, bufnr)
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
+    vim.api.nvim_win_set_cursor(0, {line_count, 0})
     
     if cfg.execution_client == "kulala" then
       local ok, kulala = pcall(require, "kulala")
       if ok then
+        -- Attempt to force Kulala to open a float on the right half
+        local ok_cfg, kulala_cfg = pcall(require, "kulala.config")
+        if ok_cfg then
+          local config = kulala_cfg.get()
+          if config then
+            config.display_mode = "float"
+            
+            local total_width = math.floor(vim.o.columns * 0.8)
+            local height = math.floor(vim.o.lines * 0.8)
+            local scratch_width = math.floor(total_width * 0.3)
+            local kulala_width = total_width - scratch_width - 2
+            local col_left = math.floor((vim.o.columns - total_width) / 2)
+            local row = math.floor((vim.o.lines - height) / 2)
+            
+            config.ui = config.ui or {}
+            config.ui.win_opts = vim.tbl_deep_extend("force", config.ui.win_opts or {}, {
+              relative = "editor",
+              width = kulala_width,
+              height = height,
+              row = row,
+              col = col_left + scratch_width + 2,
+              style = "minimal",
+              border = "rounded",
+            })
+          end
+        end
+
         vim.schedule(function()
           kulala.run()
         end)

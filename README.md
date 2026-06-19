@@ -5,13 +5,16 @@ path inference. HTTP files are resolved relative to your current working
 directory. Requests are prefixed with `###` for .http file separation.
 
 ## Features
-- `:NextRequest` builds a request from the handler under the cursor.
-- Detects method, body fields, query params, and dynamic route params.
-- Appends to a selected `.http` file via `vim.ui.select`.
+- `:NextRequest` builds a request from the handler under the cursor and appends to a `.http` file via `vim.ui.select`.
+- `:NextRequestRun` builds and immediately runs the request in a side-by-side floating window using [kulala.nvim](https://github.com/mistweaverco/kulala.nvim).
+- Detects method, body fields, query params, and dynamic route params (including Next.js catch-all routes).
+- Generates smart mock data based on Zod schema types.
+- Extracts `PORT` or `BASE_URL` dynamically from `.env` files to override the static base URL.
 
 ## Requirements
 - Neovim >= 0.9
 - Tree-sitter parser for TypeScript/JavaScript
+- (Optional) `kulala.nvim` for direct execution via `:NextRequestRun`.
 
 ## Installation (lazy.nvim)
 
@@ -22,6 +25,8 @@ directory. Requests are prefixed with `###` for .http file separation.
     base_url = "http://localhost:3000",
     route_style = "mustache",
     http_files = { "requests.http" },
+    env_files = { ".env", ".env.local" },
+    execution_client = "kulala",
     keymap = {
       enabled = false,
       lhs = "<leader>nr",
@@ -36,7 +41,8 @@ directory. Requests are prefixed with `###` for .http file separation.
 ```
 
 ## Usage
-- `:NextRequest` inside a route handler function.
+- `:NextRequest` inside a route handler function to generate a `.http` snippet.
+- `:NextRequestRun` inside a route handler to execute it instantly in a floating window.
 
 ## Configuration
 
@@ -48,6 +54,8 @@ require("next-request").setup({
     "requests.http",
     "auth.http",
   },
+  env_files = { ".env", ".env.local" }, -- Parses these to override base_url
+  execution_client = "kulala", -- Client used for :NextRequestRun
   command = "NextRequest",
   keymap = {
     enabled = false,
