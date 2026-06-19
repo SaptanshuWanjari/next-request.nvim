@@ -326,8 +326,8 @@ function M.run_request(request_info, cfg)
       end
     end
 
-    local total_width = math.floor(vim.o.columns * 0.8)
-    local height = math.floor(vim.o.lines * 0.8)
+    local total_width = math.floor(vim.o.columns * 0.9)
+    local height = math.floor(vim.o.lines * 0.9)
     local scratch_width = math.floor(total_width * 0.3)
     local kulala_width = total_width - scratch_width - 2
     local col_left = math.floor((vim.o.columns - total_width) / 2)
