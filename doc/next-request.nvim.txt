@@ -17,7 +17,7 @@ SETUP ~
     http_files = { "requests.http" },
     keymap = {
       enabled = false,
-      lhs = "<leader>nr",
+      lhs = "<leader>rq",
       mode = "n",
       desc = "Next request",
     },
